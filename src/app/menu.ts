@@ -23,34 +23,6 @@ export const menu: IMenu = {
             href: '/',
             name: '/',
             icon: Home,
-        },
-        {
-            title: 'Prospecção',
-            href: '/prospeccao',
-            name: 'Prospecção',
-            icon: GroupAddOutlinedIcon,
-            cor: '#283593',
-        },
-        {
-            title: 'Cadastramento',
-            href: '/cadastramento',
-            name: 'cadastramento',
-            icon: LocationCityIcon,
-            cor: '#EE1D23',
-        },
-        {
-            title: 'Vistoria',
-            href: '/vistoria',
-            name: 'vistoria',
-            icon: FindInPageIcon,
-            cor: '#FFAB00',
-        },
-        {
-            title: 'Despacho',
-            href: '/despacho',
-            name: 'despacho',
-            icon: DomainAddIcon,
-            cor: '#1877F2',
         }
     ],
     adminOptions: [

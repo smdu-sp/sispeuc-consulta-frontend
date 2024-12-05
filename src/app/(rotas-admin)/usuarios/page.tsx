@@ -263,11 +263,7 @@ function SearchUsuarios() {
           {usuarios ? usuarios.map((usuario) => (
             <tr key={usuario.id} style={{
               cursor: 'pointer',
-              backgroundColor: usuario.status === 3 ? 
-                theme.vars.palette.warning.plainActiveBg : 
-                usuario.status === 2 ? 
-                  theme.vars.palette.danger.plainActiveBg : 
-                  undefined
+              backgroundColor: !usuario.status ? theme.vars.palette.warning.plainActiveBg : undefined
             }}>
               <td onClick={() => router.push('/usuarios/detalhes/' + usuario.id)}>{usuario.nome}</td>
               <td onClick={() => router.push('/usuarios/detalhes/' + usuario.id)}>{usuario.email}</td>
@@ -282,7 +278,7 @@ function SearchUsuarios() {
               </td>
               <td>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                  {usuario.status !== 1 ? (
+                  {!usuario.status ? (
                     <Tooltip title="Aprovar usuário novo" arrow placement="top">
                       <IconButton size="sm" color="success" onClick={() => confirmaAutorizaUsuario(usuario.id)}>
                         <Check />
@@ -296,7 +292,7 @@ function SearchUsuarios() {
                 </div>
               </td>
             </tr>
-          )) : <tr><td colSpan={6}>Nenhum usuário encontrado</td></tr>}
+          )) : <tr><td colSpan={5}>Nenhum usuário encontrado</td></tr>}
         </tbody>
       </Table>
       {(total && total > 0) ? <TablePagination

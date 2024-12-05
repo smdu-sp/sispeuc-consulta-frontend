@@ -15,7 +15,7 @@ export interface IUsuario {
     login: string;
     email: string;
     permissao: string;
-    status: number;
+    status: boolean;
     ultimologin: Date;
     criadoEm: Date;
     atualizadoEm?: Date;
@@ -31,7 +31,7 @@ export interface ICreateUsuario {
 export interface IUpdateUsuario {
     id?: string;
     permissao?: string;
-    status?: number;
+    status?: boolean;
 }
 
 export interface IPaginadoUsuario {
@@ -59,10 +59,10 @@ async function listaCompleta(): Promise<IUsuario[]> {
 }
 
 async function buscarTudo(
-    status: number = 1, pagina: number = 1, limite: number = 10, busca: string = '', permissao: string = '', unidade_id: string = ''
+    status: number = 1, pagina: number = 1, limite: number = 10, busca: string = '', permissao: string = ''
 ): Promise<IPaginadoUsuario> {
     const session = await getServerSession(authOptions);
-    const usuarios = await fetch(`${baseURL}usuarios/buscar-tudo?status=${status}&pagina=${pagina}&limite=${limite}&busca=${busca}&permissao=${permissao}&unidade_id=${unidade_id}`, {
+    const usuarios = await fetch(`${baseURL}usuarios/buscar-tudo?status=${status}&pagina=${pagina}&limite=${limite}&busca=${busca}&permissao=${permissao}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
