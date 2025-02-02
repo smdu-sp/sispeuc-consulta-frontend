@@ -37,6 +37,7 @@
     "react-material-symbols": "^4.4.0",
     "styled-components": "^6.1.13",
     "typescript": "5.3.3",
+    "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },
   "devDependencies": {

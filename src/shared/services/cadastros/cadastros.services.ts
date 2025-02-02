@@ -89,6 +89,22 @@ async function buscarTudo(pagina: number = 1, limite: number = 10, busca: string
     return cadastros;
 }
 
+async function buscarLista(listaSql: string[]) {
+    const session = await getServerSession(authOptions);
+    const cadastros = await fetch(`${baseURL}cadastros/buscar-lista-sql`, {
+        method: "POST",
+        body: JSON.stringify({ listaSql: listaSql }),
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`
+        }
+    }).then((response) => {
+        if (response.status === 401) Logout();
+        return response.json();
+    })
+    return cadastros;
+}
+
 async function listaSistemas(): Promise<{ sistema: string }[]> {
     const session = await getServerSession(authOptions);
     const sistemas = await fetch(`${baseURL}cadastros/lista-sistemas`, {
@@ -106,5 +122,6 @@ async function listaSistemas(): Promise<{ sistema: string }[]> {
 
 export {
     buscarTudo,
+    buscarLista,
     listaSistemas
 };

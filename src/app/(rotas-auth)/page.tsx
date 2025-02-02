@@ -1,17 +1,18 @@
 'use client'
 
 import Content from '@/components/Content';
-import { FormEvent, Suspense, useCallback, useEffect, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useContext, useEffect, useState } from 'react';
 import * as cadastrosServices from '@/shared/services/cadastros/cadastros.services';
 import * as usuarioServices from '@/shared/services/usuarios/usuario.services';
 import { Box, Button, Card, FormControl, FormLabel, IconButton, Input, Modal, ModalClose, Option, Select, Sheet, styled, Table, Tooltip, Typography } from '@mui/joy';
-import { Add, Clear, DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Refresh, Search, UploadFile } from '@mui/icons-material';
+import { Add, Check, Clear, DeleteForever, KeyboardArrowDown, KeyboardArrowUp, Refresh, Search, UploadFile } from '@mui/icons-material';
 import { IPaginadoCadastros, ICadastros } from '@/shared/services/cadastros/cadastros.services';
 import { IPaginadoUsuario, IUsuario } from '@/shared/services/usuarios/usuario.services';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { TablePagination } from '@mui/material';
-import Papa from "papaparse";
+import * as xlsx from 'xlsx';
 import React from 'react';
+import { AlertsContext } from '@/providers/alertsProvider';
 
 export default function Usuarios(){
   return (
@@ -24,7 +25,10 @@ export default function Usuarios(){
 function SearchUsuarios() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const { setAlert } = useContext(AlertsContext);
   const [cadastros, setCadastros] = useState<ICadastros[]>([]);
+  const [listaSqlsResposta, setListaSqlsResposta] = useState<any[]>([]);
+  const [consultandoSql, setConsultandoSql] = useState(false);
   const [sistemas, setSistemas] = useState<{ sistema: string }[]>([]);
   const [pagina, setPagina] = useState(searchParams.get('pagina') ? Number(searchParams.get('pagina')) : 1);
   const [limite, setLimite] = useState(searchParams.get('limite') ? Number(searchParams.get('limite')) : 10);
@@ -35,7 +39,6 @@ function SearchUsuarios() {
   const [usuario, setUsuario] = useState<IUsuario>({} as IUsuario);
   const router = useRouter();
   const [modalArquivo, setModalArquivo] = useState(false);
-  const [arquivoNome, setArquivoNome] = useState('');
   const [arquivo, setArquivo] = useState<File | null>(null);
 
   useEffect(() => {
@@ -67,7 +70,6 @@ function SearchUsuarios() {
     setCadastros([]);
     cadastrosServices.buscarTudo(pagina, limite, busca, sistema)
       .then((response: IPaginadoCadastros) => {
-        console.log(response.data);
         setTotal(response.total);
         setPagina(response.pagina);
         setLimite(response.limite);
@@ -121,36 +123,39 @@ function SearchUsuarios() {
     width: 1px;
   `;
   
-  function formatarSql(value: string): string {
-    //111.111.1111-1
-    if (!value) return value;
-    const onlyNumbers = value && value.toString().replace(/\D/g, '').substring(0, 11);
-    if (onlyNumbers === '') return '';
-    if (onlyNumbers.length <= 3)
-        return onlyNumbers.replace(/(\d{0,3})/, '$1');
-    if (onlyNumbers.length <= 6)
-        return onlyNumbers.replace(/(\d{0,3})(\d{0,3})/, '$1.$2');
-    if (onlyNumbers.length <= 10)
-        return onlyNumbers.replace(/(\d{0,3})(\d{0,3})(\d{0,4})/, '$1.$2.$3');
-    return onlyNumbers.replace(/(\d{0,3})(\d{0,3})(\d{0,4})(\d{0,1})/, '$1.$2.$3-$4');
-  }
-  
   function enviarArquivo(): void {
     if (!arquivo) return alert("Suba um arquivo válido!");
+    setConsultandoSql(true);
     const reader = new FileReader();
-    reader.readAsText(arquivo);
-    reader.onload = () => {
-        const text = reader.result;
-        const csv = text as string;
-        const lines = csv.split('\n');
-        const headers = lines[0].split(';');
-        var data = lines.slice(1).map((row) => row.split(';')[0]);
-        data = data.filter((row) => {
-          row = formatarSql(row.replace(/\D/g, ''));
-          if (row !== '') return row;
-        })
-        console.log(data);
+    reader.readAsArrayBuffer(arquivo);
+    reader.onload = (e) => {
+      if (e.target){
+        const data = e.target?.result;
+        const wb = xlsx.read(data);
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const linhas = xlsx.utils.sheet_to_json(ws, { header: 1 });
+        const sqls = linhas.slice(1).map((row: any) => row[0].split(';')[0]);
+        if (sqls.length <= 0) return alert("Lista de SQL vazia.");
+        cadastrosServices.buscarLista(sqls)
+          .then((response: any[]) => {
+            setListaSqlsResposta(response);
+            setConsultandoSql(false);
+            setAlert('Sucesso!', 'Busca de lista de SQLs realizada com sucesso!', 'success', 5000, Check);
+            setArquivo(null);
+          });
+      }
+      // setConsultandoSql(false);
     };
+    // setConsultandoSql(false);
+  }
+
+  function baixarRelatorioXLSX() {
+    const ws = xlsx.utils.json_to_sheet(listaSqlsResposta);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Relatório");
+    xlsx.writeFile(wb, `${new Date().toLocaleDateString()}_lista_processos_sqls.xlsx`);
+    setListaSqlsResposta([]);
   }
 
   return (
@@ -169,41 +174,59 @@ function SearchUsuarios() {
           variant="outlined"
           sx={{ maxWidth: 500, borderRadius: 'md', p: 3, boxShadow: 'lg', minWidth: 300 }}
         >
-          <form>
-            <Typography id="modal-title" level="h4" component="h2">
-              Enviar lista de SQLs
-            </Typography>
-            <Button
-              component="label"
-              role={undefined}
-              tabIndex={-1}
-              variant="outlined"
-              color={arquivo ? 'primary' : 'neutral'}
-              sx={{ width: '100%', mt: 2 }}
-              startDecorator={<UploadFile />}
-            >
-              {arquivo ? arquivo.name : 'Escolher arquivo'}
-              <VisuallyHiddenInput type="file" name="lista" multiple={false} accept=".csv, .xls, .xlsx"
-                onChange={(event) => {
-                  if (event.target.files) {
-                    setArquivo(event.target.files[0]);
-                  }
-                }}
-              />
-            </Button>
-            {arquivo && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button type="button" onClick={enviarArquivo} sx={{ mt: 2 }} variant="soft">Enviar</Button>
-            </Box>}
-          </form>
+          <Typography id="modal-title" level="h4" component="h2">
+            Enviar lista de SQLs
+          </Typography>
+          <Button
+            component="label"
+            role={undefined}
+            tabIndex={-1}
+            variant="outlined"
+            color={arquivo ? 'primary' : 'neutral'}
+            sx={{ width: '100%', mt: 2 }}
+            startDecorator={<UploadFile />}
+          >
+            {arquivo ? arquivo.name : 'Escolher arquivo'}
+            <VisuallyHiddenInput type="file" name="lista" multiple={false} accept=".csv, .xls, .xlsx"
+              onChange={(event) => {
+                if (event.target.files) {
+                  setArquivo(event.target.files[0]);
+                }
+              }}
+            />
+          </Button>
+          {listaSqlsResposta && listaSqlsResposta.length > 0 && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button type="button" onClick={baixarRelatorioXLSX} sx={{ mt: 2 }} variant="solid" color="success">Baixar Relatório</Button>
+          </Box>}
+          {arquivo && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button type="button" onClick={enviarArquivo} sx={{ mt: 2 }} variant="solid" loading={consultandoSql}>Enviar</Button>
+          </Box>}
         </Sheet>
       </Modal>
       <Sheet sx={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, boxShadow: 'xs', p: 4 }}>
+        {/* <Box sx={{ display: listaSqlsResposta.length > 0 ? 'flex' : 'none' }}>
+          <Table hoverRow sx={{ tableLayout: 'auto' }} id="table-relatorio">
+            <thead>
+              <tr>
+                {listaSqlsResposta.length > 0 && Object.keys(listaSqlsResposta[0]).map((key) => <th key={key}>{key}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {listaSqlsResposta.map((row, index) => (
+                <tr key={index}>
+                  {Object.values(row).map((value, index2) => <td key={index2}>{(index === 0 || value !== Object.values(listaSqlsResposta[index-1])[index2]) && value as React.ReactNode}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Box> */}
         <Box
           className="SearchAndFilters-tabletUp"
           sx={{
             borderRadius: 'sm',
             pb: 2,
-            display: { xs: 'none', sm: 'flex' },
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
             flexWrap: 'wrap',
             gap: 1.5,
             '& > *': {
@@ -212,16 +235,16 @@ function SearchUsuarios() {
             alignItems: 'end',
           }}
         >
-          <IconButton size='sm' onClick={buscaCadastros}><Refresh /></IconButton>
-          <IconButton size='sm' onClick={limpaFitros}><Clear /></IconButton>
+          <IconButton size='sm' sx={{ display: { xs: 'none', sm: 'flex' }}} onClick={buscaCadastros}><Refresh /></IconButton>
+          <IconButton size='sm' sx={{ display: { xs: 'none', sm: 'flex' }}} onClick={limpaFitros}><Clear /></IconButton>
           <FormControl size="sm">
             <FormLabel>Sistema: </FormLabel>
             <Select
               size="sm"
               value={sistema}
               onChange={(_, value) => {
-                value || value === '' && setSistema(value);
-                value || value === '' && router.push(pathname + '?' + createQueryString('sistema', value));
+                value && setSistema(value);
+                value && router.push(pathname + '?' + createQueryString('sistema', value));
               }}
             >
               <Option value=''>Todos</Option>
