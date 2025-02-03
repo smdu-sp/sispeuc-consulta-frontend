@@ -72,6 +72,18 @@ export interface ICadastros {
     endereco?: IEnderecos;
 }
 
+export interface IListaSql {
+    sql: string;
+    processos?: {
+        processo?: string;
+        sistema?: string;
+        assunto?: string;
+        situacao?: string;
+        dataInclusao?: string;
+        dataEncerramento?: string;
+    }[]
+}
+
 const baseURL = process.env.API_URL || 'http://localhost:3000/';
 
 async function buscarTudo(pagina: number = 1, limite: number = 10, busca: string = '', sistema: string = ''): Promise<IPaginadoCadastros> {
@@ -89,7 +101,7 @@ async function buscarTudo(pagina: number = 1, limite: number = 10, busca: string
     return cadastros;
 }
 
-async function buscarLista(listaSql: string[]) {
+async function buscarLista(listaSql: string[]): Promise<IListaSql[]> {
     const session = await getServerSession(authOptions);
     const cadastros = await fetch(`${baseURL}cadastros/buscar-lista-sql`, {
         method: "POST",

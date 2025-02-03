@@ -1,7 +1,7 @@
 'use client'
 
 import Content from '@/components/Content';
-import { FormEvent, Suspense, useCallback, useContext, useEffect, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import * as cadastrosServices from '@/shared/services/cadastros/cadastros.services';
 import * as usuarioServices from '@/shared/services/usuarios/usuario.services';
 import { Box, Button, Card, FormControl, FormLabel, IconButton, Input, Modal, ModalClose, Option, Select, Sheet, styled, Table, Tooltip, Typography } from '@mui/joy';
@@ -9,7 +9,7 @@ import { Add, Check, Clear, DeleteForever, KeyboardArrowDown, KeyboardArrowUp, R
 import { IPaginadoCadastros, ICadastros } from '@/shared/services/cadastros/cadastros.services';
 import { IPaginadoUsuario, IUsuario } from '@/shared/services/usuarios/usuario.services';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { TablePagination } from '@mui/material';
+import { Paper, TableContainer, TablePagination } from '@mui/material';
 import * as xlsx from 'xlsx';
 import React from 'react';
 import { AlertsContext } from '@/providers/alertsProvider';
@@ -23,11 +23,13 @@ export default function Usuarios(){
 }
 
 function SearchUsuarios() {
+  const tableRef = useRef<HTMLDivElement>(null);
+  
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { setAlert } = useContext(AlertsContext);
   const [cadastros, setCadastros] = useState<ICadastros[]>([]);
-  const [listaSqlsResposta, setListaSqlsResposta] = useState<any[]>([]);
+  const [listaSqlsResposta, setListaSqlsResposta] = useState<cadastrosServices.IListaSql[]>([]);
   const [consultandoSql, setConsultandoSql] = useState(false);
   const [sistemas, setSistemas] = useState<{ sistema: string }[]>([]);
   const [pagina, setPagina] = useState(searchParams.get('pagina') ? Number(searchParams.get('pagina')) : 1);
@@ -64,6 +66,16 @@ function SearchUsuarios() {
     },
     [searchParams]
   );
+  
+  function downloadXlsxTabela(){
+    const tabela = document.getElementById('tabela-relatorio');
+    const ws = xlsx.utils.table_to_sheet(tabela);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Relatório");
+    setListaSqlsResposta([]);
+    const dataRelatorio = new Date();
+    xlsx.writeFile(wb, `${dataRelatorio.toLocaleDateString()}_${dataRelatorio.toLocaleTimeString()}_lista_processos_sqls.xlsx`);
+  }
 
   const buscaCadastros = async () => {
     setLoading(true);
@@ -138,16 +150,22 @@ function SearchUsuarios() {
         const sqls = linhas.slice(1).map((row: any) => row[0].split(';')[0]);
         if (sqls.length <= 0) return alert("Lista de SQL vazia.");
         cadastrosServices.buscarLista(sqls)
-          .then((response: any[]) => {
+          .then((response: cadastrosServices.IListaSql[]) => {
             setListaSqlsResposta(response);
+            console.log(response);
             setConsultandoSql(false);
             setAlert('Sucesso!', 'Busca de lista de SQLs realizada com sucesso!', 'success', 5000, Check);
             setArquivo(null);
+          })
+          .catch((error) => {
+            setConsultandoSql(false);
+            setAlert('Erro!', 'Erro ao buscar lista de SQLs!', 'danger', 5000, DeleteForever);
+          })
+          .finally(() => {
+            setConsultandoSql(false);
           });
       }
-      // setConsultandoSql(false);
     };
-    // setConsultandoSql(false);
   }
 
   function baixarRelatorioXLSX() {
@@ -196,30 +214,56 @@ function SearchUsuarios() {
             />
           </Button>
           {listaSqlsResposta && listaSqlsResposta.length > 0 && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <Button type="button" onClick={baixarRelatorioXLSX} sx={{ mt: 2 }} variant="solid" color="success">Baixar Relatório</Button>
+            <Button type="button" onClick={downloadXlsxTabela} sx={{ mt: 2 }} variant="solid" color="success">Baixar Relatório</Button>
           </Box>}
           {arquivo && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
             <Button type="button" onClick={enviarArquivo} sx={{ mt: 2 }} variant="solid" loading={consultandoSql}>Enviar</Button>
           </Box>}
         </Sheet>
       </Modal>
-      <Sheet sx={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, boxShadow: 'xs', p: 4 }}>
-        {/* <Box sx={{ display: listaSqlsResposta.length > 0 ? 'flex' : 'none' }}>
-          <Table hoverRow sx={{ tableLayout: 'auto' }} id="table-relatorio">
-            <thead>
-              <tr>
-                {listaSqlsResposta.length > 0 && Object.keys(listaSqlsResposta[0]).map((key) => <th key={key}>{key}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {listaSqlsResposta.map((row, index) => (
-                <tr key={index}>
-                  {Object.values(row).map((value, index2) => <td key={index2}>{(index === 0 || value !== Object.values(listaSqlsResposta[index-1])[index2]) && value as React.ReactNode}</td>)}
+      {listaSqlsResposta && listaSqlsResposta.length > 0 &&
+        <Sheet sx={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, boxShadow: 'xs', p: 4, display: 'none' }}>
+          <Box>
+            <Table hoverRow sx={{ tableLayout: 'auto', borderRadius: 20 }} id="tabela-relatorio">
+              <thead>
+                <tr>
+                  <th>SQL</th>
+                  <th>Processo</th>
+                  <th>Sistema</th>
+                  <th>Assunto</th>
+                  <th>Situação</th>
+                  <th>Data de Inclusão</th>
+                  <th>Data de Encerramento</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Box> */}
+              </thead>
+              <tbody>
+                {listaSqlsResposta && listaSqlsResposta.length > 0 && listaSqlsResposta.map((sql_processos, index) => {
+                  return sql_processos.processos && sql_processos.processos.length > 0 && sql_processos.processos.map((processo, index2) => {
+                    return (
+                      <tr key={`${index}-${index2}`}>
+                        {index2 === 0 && 
+                        <td
+                          align='center'
+                          rowSpan={sql_processos.processos && sql_processos.processos.length || 1}
+                        >
+                          {index2 === 0 && sql_processos.sql}
+                        </td>}
+                        <td>{processo.processo}</td>
+                        <td>{processo.sistema}</td>
+                        <td>{processo.assunto}</td>
+                        <td>{processo.situacao}</td>
+                        <td>{processo.dataInclusao}</td>
+                        <td>{processo.dataEncerramento}</td>
+                      </tr>
+                    )
+                  })
+                })}
+              </tbody>
+            </Table>
+          </Box>
+        </Sheet>
+      }
+      <Sheet sx={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, boxShadow: 'xs', p: 4 }}>
         <Box
           className="SearchAndFilters-tabletUp"
           sx={{
