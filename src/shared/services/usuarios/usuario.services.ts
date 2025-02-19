@@ -3,10 +3,10 @@
 import { authOptions } from "@/shared/auth/authOptions";
 import { getServerSession } from "next-auth";
 import { signOut } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 export async function Logout() {
-    await signOut({ redirect: false });
-    window.location.href = '/login';
+    
 }
 
 export interface IUsuario {
@@ -39,6 +39,13 @@ export interface IPaginadoUsuario {
     total: number;
     pagina: number;
     limite: number;
+}
+
+export interface IRespostaUsuario {
+    ok: boolean;
+    error: string | null;
+    data: IUsuario | IPaginadoUsuario | null;
+    status: number;
 }
 
 const baseURL = process.env.API_URL || 'http://localhost:3000/';
@@ -106,8 +113,9 @@ async function autorizar(id: string): Promise<{ autorizado: boolean }> {
     return autorizado;
 }
 
-async function criar(data: ICreateUsuario): Promise<IUsuario> {
+async function criar(data: ICreateUsuario): Promise<IRespostaUsuario> {
     const session = await getServerSession(authOptions);
+    if (!session) redirect("/login");
     const response: Response = await fetch(`${baseURL}usuarios/criar`, {
         method: "POST",
         headers: {
@@ -115,27 +123,60 @@ async function criar(data: ICreateUsuario): Promise<IUsuario> {
             "Authorization": `Bearer ${session?.access_token}`
         }, body: JSON.stringify(data)
     })
-    if (response.status === 401) Logout();
-    if (response.status === 403) throw new Error("Usuário já cadastrado.");
-    if (response.status !== 201) throw new Error("Erro inesperado, status de resposta diferente de 201.");
-    const user: IUsuario = await response.json();
-    return user;
+    const dataResponse = await response.json();
+    if (response.status === 201)
+        return { 
+            ok: true,
+            error: null,
+            data: dataResponse,
+            status: 201
+        }
+    if (!dataResponse)
+        return {
+            ok: false,
+            error: "Erro ao criar novo usuário.",
+            data: null,
+            status: 500
+        }
+    return {
+        ok: false,
+        error: dataResponse.message,
+        data: null,
+        status: dataResponse.statusCode
+    }
 }
 
-async function atualizar(id: string, data: IUpdateUsuario): Promise<IUsuario> {
+async function atualizar(id: string, data: IUpdateUsuario): Promise<IRespostaUsuario> {
     const session = await getServerSession(authOptions);
-    const autorizado = await fetch(`${baseURL}usuarios/atualizar/${id}`, {
+    if (!session) redirect("/login");
+    const response: Response = await fetch(`${baseURL}usuarios/atualizar/${id}`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${session?.access_token}`
         }, body: JSON.stringify(data)
-    }).then((response) => {
-        if (response.status === 401) Logout();
-        if (response.status !== 200) return;
-        return response.json();
-    })
-    return autorizado;
+    });
+    const dataResponse = await response.json();
+    if (response.status === 200)
+        return { 
+            ok: true,
+            error: null,
+            data: dataResponse,
+            status: 200
+        }
+    if (!dataResponse)
+        return {
+            ok: false,
+            error: "Erro ao atualizar usuário.",
+            data: null,
+            status: 500
+        }
+    return {
+        ok: false,
+        error: dataResponse.message,
+        data: null,
+        status: dataResponse.statusCode
+    }
 }
 
 async function desativar(id: string): Promise<{ desativado: boolean }> {

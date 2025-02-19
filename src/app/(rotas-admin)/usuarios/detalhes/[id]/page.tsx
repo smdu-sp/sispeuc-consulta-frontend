@@ -1,26 +1,22 @@
-'use client'
-
-import { useContext, useEffect, useState } from "react";
-import { Box, Button, Card, CardActions, CardOverflow, Chip, ChipPropsColorOverrides, ColorPaletteProp, Divider, FormControl, FormLabel, IconButton, Input, Option, Select, Stack } from "@mui/joy";
-import { Badge, Cancel, Check, Clear, EmailRounded, Warning } from "@mui/icons-material";
-import { useRouter } from 'next/navigation';
+import { Chip, ChipPropsColorOverrides, ColorPaletteProp } from "@mui/joy";
 import { OverridableStringUnion } from '@mui/types';
 
 import Content from "@/components/Content";
-import { IUsuario } from "@/shared/services/usuarios/usuario.services";
-import { AlertsContext } from "@/providers/alertsProvider";
-import { buscarNovo, criar, buscarPorId, atualizar } from "@/shared/services/usuarios/usuario.services";
+import { headers as nextHeaders } from "next/headers";
+import UsuarioDetalhesForm from "./_components/form";
 
-export default function UsuarioDetalhes(props: any) {
-    const [usuario, setUsuario] = useState<IUsuario>();
-    const [permissao, setPermissao] = useState('USR');
-    const [nome, setNome] = useState('');
-    const [login, setLogin] = useState('');
-    const [email, setEmail] = useState('');
-    const [novoUsuario, setNovoUsuario] = useState(false);
+export default async function UsuarioDetalhes(props: { params: { id: string }}) {
     const { id } = props.params;
-    const router = useRouter();
-    const { setAlert } = useContext(AlertsContext);
+    const headers = nextHeaders();
+    if (id || id !== '') {
+        const response = await fetch(`http://localhost:3001/api/usuarios/buscar-por-id/${id}`, {
+            headers
+        });
+        var { data, ok, error, status } = await response.json();
+        if (!ok) data = {};
+    } else {
+        var data;
+    }
 
     const permissoes: Record<string, { label: string, value: string, color: OverridableStringUnion<ColorPaletteProp, ChipPropsColorOverrides> | undefined }> = {
         'DEV': { label: 'Desenvolvedor', value: 'DEV', color: 'neutral' },
@@ -29,161 +25,21 @@ export default function UsuarioDetalhes(props: any) {
         'USR': { label: 'Usuário', value: 'USR', color: 'warning' },
     }
 
-    useEffect(() => {
-        if (id) buscarPorId(id)
-            .then((response: IUsuario) => {
-                setUsuario(response);
-                setPermissao(response.permissao);
-                setEmail(response.email);
-            }).catch(error => setAlert('Erro', `${error}`, 'warning', 3000, Cancel))
-    }, [ id ]);
-
-    const submitData = () => {
-        if (usuario) 
-            atualizar(usuario.id, {
-                permissao
-            }).then((response) => {
-                if (response.id) {
-                    setAlert('Usuário alterado!', 'Dados atualizados com sucesso!', 'success', 3000, Check);
-                    router.push('/usuarios');
-                }
-            }).catch(error => setAlert('Erro inesperado!', `${error}`, 'danger', 5000, Cancel));
-        else {
-            if (novoUsuario) {
-                criar({
-                    nome, login, email, permissao
-                }).then((response) => {
-                    if (response && response.id) {
-                        setAlert('Usuário criado!', 'Dados inseridos com sucesso!', 'success', 3000, Check);
-                        router.push('/usuarios');
-                    }
-                }).catch(error => setAlert('Erro inesperado!', `${error}`, 'danger', 5000, Cancel))
-            }
-        }
-    }
-
-    const buscarNovoUsuario = () => {
-        if (login)
-            buscarNovo(login).then((response: any) => {
-                if (response.message) setAlert('Erro', response.message, 'warning', 3000, Warning);
-                if (response.id) router.push('/usuarios/detalhes/' + response.id);
-                if (response.email) {
-                    setNome(response.nome ? response.nome : '');
-                    setLogin(response.login ? response.login : '');
-                    setEmail(response.email ? response.email : '');
-                    setNovoUsuario(true);
-                }
-            }).catch(error => setAlert('Erro', `${error}`, 'warning', 3000, Cancel))
-    }
-
-    const limpaUsuario = () => {
-        setNovoUsuario(false);
-        setNome('');
-        setLogin('');
-        setEmail('');
-        setPermissao('USR');
-    }    
-
     return (
         <Content
             breadcrumbs={[
                 { label: 'Usuários', href: '/usuarios' },
-                { label: usuario ? usuario.nome : 'Novo', href: `/usuarios/detalhes/${id ? id : ''}` },
+                { label: data.nome || 'Novo usuário', href: `/usuarios/detalhes/${id ? id : ''}` },
             ]}
-            titulo={id ? usuario?.nome : 'Novo'}
+            titulo={id ? data?.nome : 'Novo usuário'}
             tags={
-                usuario ? <div style={{ display: 'flex', gap: '0.2rem' }}>     
-                  <Chip color={permissoes[usuario?.permissao].color} size='lg'>{permissoes[usuario?.permissao].label}</Chip>
+                data && data.permissao ? <div style={{ display: 'flex', gap: '0.2rem' }}>     
+                  <Chip color={permissoes[data?.permissao].color} size='lg'>{permissoes[data?.permissao].label}</Chip>
                 </div> : null
             }
             pagina="usuarios"
         >
-            <Box
-                sx={{
-                    display: 'flex',
-                    mx: 'auto',
-                    width: '90%',
-                    maxWidth: 800,
-                    px: { xs: 2, md: 6 },
-                    py: { xs: 2, md: 3 },
-                }}
-            >
-                <Card sx={{ width: '100%' }}>
-                    <Stack spacing={2} >
-                        {!id ? 
-                        <><Stack>
-                            <FormControl>
-                                <FormLabel>Login de rede</FormLabel>
-                                <Input 
-                                    placeholder="Buscar por login de rede" 
-                                    value={login} 
-                                    onChange={e => setLogin(e.target.value)} 
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') buscarNovoUsuario()
-                                    }}
-                                    endDecorator={
-                                    novoUsuario 
-                                        ? <IconButton onClick={limpaUsuario}><Clear /></IconButton> 
-                                        : <Button onClick={buscarNovoUsuario} variant="soft">Buscar</Button>}
-                                    readOnly={novoUsuario}
-                                />
-                            </FormControl>
-                        </Stack>
-                        <Divider />
-                        <Stack>
-                            <FormControl>
-                                <FormLabel>Nome</FormLabel>
-                                <Input 
-                                    placeholder="Nome" 
-                                    value={nome} 
-                                    onChange={e => setNome(e.target.value)} 
-                                    readOnly={novoUsuario}
-                                />
-                            </FormControl>
-                        </Stack>
-                        <Divider />
-                        </> : null}
-                        <Stack>
-                            <FormControl>
-                                <FormLabel>Permissao</FormLabel>
-                                <Select value={permissao ? permissao : 'USR'} onChange={(_, value) => value && setPermissao(value)}
-                                    startDecorator={<Badge />}>
-                                    <Option value="DEV">Desenvolvedor</Option>
-                                    <Option value="SUP">Superadmin</Option>
-                                    <Option value="ADM">Administrador</Option>
-                                    <Option value="USR">Usuário</Option>
-                                </Select>
-                            </FormControl>
-                        </Stack>
-                        <Divider />
-                        <Stack direction="row" spacing={2}>
-                            <FormControl sx={{ flexGrow: 1 }}>
-                                <FormLabel>Email</FormLabel>
-                                <Input
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    size="sm"
-                                    type="email"
-                                    startDecorator={<EmailRounded />}
-                                    placeholder="Email"
-                                    sx={{ flexGrow: 1 }}
-                                    readOnly={id ? true : (novoUsuario)}
-                                />
-                            </FormControl>
-                        </Stack>
-                    </Stack>
-                    <CardOverflow sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
-                        <CardActions sx={{ alignSelf: 'flex-end', pt: 2 }}>
-                        <Button size="sm" variant="outlined" color="neutral" onClick={() => router.back()}>
-                            Cancelar
-                        </Button>
-                        <Button size="sm" variant="solid" onClick={submitData}>
-                            Salvar
-                        </Button>
-                        </CardActions>
-                    </CardOverflow>
-                </Card>
-            </Box>            
+            <UsuarioDetalhesForm usuario={data} headers={headers} />
         </Content>
     );
 }

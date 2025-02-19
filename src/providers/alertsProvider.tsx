@@ -10,7 +10,7 @@ export const AlertsContext = createContext({
     duration: 0,
     icon: Check,
     toggleAlert: () => {},
-    setAlert: (message?: string, title?: string, alertType?: ColorPaletteProp, duration?: number, icon?: any) => {},
+    setAlert: (title?: string, message?: string, alertType?: ColorPaletteProp, duration?: number, icon?: any) => {},
 });
 
 export default function AlertsProvider ({ ...props }) {
