@@ -3,8 +3,6 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
  
-type Params = {
-};
 
 export async function GET(
 ) {
