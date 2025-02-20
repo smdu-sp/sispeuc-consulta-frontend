@@ -1,6 +1,8 @@
 /** @format */
 
-import { baseURL } from '../../usuarios/utils/base-url';
+import { baseURL } from "@/shared/utils/base-url";
+
+
 
 export async function FetchBuscarTudoCadastro(
 	pagina: string,

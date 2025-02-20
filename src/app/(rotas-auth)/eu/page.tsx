@@ -21,7 +21,7 @@ import { EmailRounded } from '@mui/icons-material';
 import { OverridableStringUnion } from '@mui/types';
 
 import Content from '@/components/Content';
-import { IUsuario } from '@/shared/services/types/usuario';
+import { IUsuario } from '@/shared/types/usuario';
 import { FetchValidaUsuario } from '@/shared/services/usuarios/get-functions/valida';
 
 export default function UsuarioDetalhes() {

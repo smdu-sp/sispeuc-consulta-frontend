@@ -3,9 +3,10 @@
 'use server';
 
 import { authOptions } from '@/shared/auth/authOptions';
+import { baseURL } from '@/shared/utils/base-url';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { baseURL } from '../utils/base-url';
+
 
 export async function AutorizarUsuario(id: string) {
 	const session = await getServerSession(authOptions);

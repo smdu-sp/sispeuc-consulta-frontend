@@ -1,6 +1,8 @@
 /** @format */
 
-import { baseURL } from '../utils/base-url';
+import { baseURL } from "@/shared/utils/base-url";
+
+
 
 export async function FetchBuscarPorId(id: string, access_token: string) {
 	if (!id || id === '')

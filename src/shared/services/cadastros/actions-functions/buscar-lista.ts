@@ -2,7 +2,9 @@
 
 'use server';
 
-import { baseURL } from '../../usuarios/utils/base-url';
+import { baseURL } from "@/shared/utils/base-url";
+
+
 
 export async function FetchBuscarListaCadastro(
 	listaSql: string[],

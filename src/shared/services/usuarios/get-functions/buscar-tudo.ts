@@ -1,6 +1,8 @@
 /** @format */
 
-import { baseURL } from '../utils/base-url';
+import { baseURL } from "@/shared/utils/base-url";
+
+
 
 export async function FetchBuscarTudo(access_token: string) {
 	try {
