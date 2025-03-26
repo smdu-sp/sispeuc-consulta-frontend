@@ -37,7 +37,7 @@ export default function Login() {
       return;
     }
     setAlert('Bem-vindo!', 'Login efetuado com sucesso', 'success', 5000);
-    setTimeout(() => router.replace('/'), 3000);
+    router.push('/');
   }
   const [windowSize, setWindowSize] = useState(getWindowSize());
   useEffect(() => {
