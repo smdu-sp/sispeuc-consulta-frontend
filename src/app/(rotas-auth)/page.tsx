@@ -44,6 +44,7 @@ function SearchUsuarios() {
   const [arquivo, setArquivo] = useState<File | null>(null);
 
   useEffect(() => {
+    buscaCadastros();
     usuarioServices.validaUsuario()
       .then((response: IUsuario) => {
           setUsuario(response);
@@ -78,7 +79,6 @@ function SearchUsuarios() {
   }
 
   const buscaCadastros = async () => {
-    console.time('buscaCadastros');
     setLoading(true);
     setCadastros([]);
     cadastrosServices.buscarTudo(pagina, limite, busca, sistema)
@@ -88,7 +88,6 @@ function SearchUsuarios() {
         setLimite(response.limite);
         setCadastros(response.data);
         setLoading(false);
-        console.timeEnd('buscaCadastros');
       });
   }
 
@@ -294,7 +293,7 @@ function SearchUsuarios() {
               }}
             >
               <Option value=''>Todos</Option>
-              {sistemas.map((sistema) => (
+              {sistemas && sistemas.length > 0 && sistemas.map((sistema) => (
                 <Option key={sistema.sistema} value={sistema.sistema}>
                   {sistema.sistema}
                 </Option>
