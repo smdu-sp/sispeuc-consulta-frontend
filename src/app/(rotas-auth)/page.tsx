@@ -78,6 +78,7 @@ function SearchUsuarios() {
   }
 
   const buscaCadastros = async () => {
+    console.time('buscaCadastros');
     setLoading(true);
     setCadastros([]);
     cadastrosServices.buscarTudo(pagina, limite, busca, sistema)
@@ -87,6 +88,7 @@ function SearchUsuarios() {
         setLimite(response.limite);
         setCadastros(response.data);
         setLoading(false);
+        console.timeEnd('buscaCadastros');
       });
   }
 
