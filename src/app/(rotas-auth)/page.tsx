@@ -80,7 +80,6 @@ function SearchUsuarios() {
 
   const buscaCadastros = async () => {
     setLoading(true);
-    setCadastros([]);
     cadastrosServices.buscarTudo(pagina, limite, busca, sistema)
       .then((response: IPaginadoCadastros) => {
         setTotal(response.total);
@@ -88,7 +87,9 @@ function SearchUsuarios() {
         setLimite(response.limite);
         setCadastros(response.data);
         setLoading(false);
-      });
+      })
+      .catch((error) => { setLoading(false); })
+      .finally(() => { setLoading(false); });
   }
 
   const limpaFitros = () => {
